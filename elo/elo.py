@@ -14,14 +14,20 @@ def elo_adjust(outcomes: json, current) -> List[dict]:
     p2 = outcomes["p2_name"]
     p1_score = int(outcomes["p1_score"])
     p2_score = int(outcomes["p2_score"])
-    total = int(max(p1_score, p2_score))
+    total = p1_score + p2_score
     p1_rating = current["p1_current"]
     p2_rating = current["p2_current"]
     exp1 = (1 / (1 + 10 ** ((p2_rating - p1_rating) / 400))) * total
     exp2 = (1 / (1 + 10 ** ((p1_rating - p2_rating) / 400))) * total
     player_updates = [
-        {"name": p1, "rating": p1_rating + 16 * (p1_score - exp1)},
-        {"name": p2, "rating": p2_rating + 16 * (p2_score - exp2)},
+        {
+            "name": p1,
+            "rating": int(round(max(100, p1_rating + 25 * (p1_score - exp1)), 0)),
+        },
+        {
+            "name": p2,
+            "rating": int(round(max(100, p2_rating + 25 * (p2_score - exp2)), 0)),
+        },
     ]
     return player_updates
 
