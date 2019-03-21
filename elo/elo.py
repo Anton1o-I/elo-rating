@@ -6,7 +6,6 @@ def elo_adjust(outcomes: json, current) -> List[dict]:
     """
     Takes in a score dictionary (must be len 2) in the format {key:value, key:value} where key is name
     for each player and value is their score in the game
-    Ex. {"Brian": 0, "TylerW":11}
     Ex. {"p1_name": "Brian", "p1_score": 0, "p2_name": "Tyler", "p2_score": 11}
     """
     total = int(outcomes["p1_score"]) + int(outcomes["p2_score"])
