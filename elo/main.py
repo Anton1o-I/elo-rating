@@ -155,6 +155,11 @@ def get_games():
 def get_rival_results():
     p1 = request.form["player1"]
     p2 = request.form["player2"]
+    match1 = Match.query.filter(Match.player1 == p1, Match.player2 == p2)
+    match2 = Match.query.filter(Match.player1 == p2, Match.player2 == p1)
+    result1 = matches_schema.dump(match1)
+    result2 = matches_schema.dump(match2)
+    return jsonify(result1.data, result2.data)
 
 
 if __name__ == "__main__":
