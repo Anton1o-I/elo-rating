@@ -37,6 +37,29 @@ player_schema = PlayerSchema()
 players_schema = PlayerSchema(many=True)
 
 
+class Match(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    player1 = db.Column(db.String(80), unique=False)
+    player2 = db.Column(db.String(80), unique=False)
+    p1_score = db.Column(db.Integer, unique=False)
+    p2_score = db.Column(db.Integer, unique=False)
+
+    def __init__(self, player1, player2, p1_score, p2_score):
+        self.player1 = player1
+        self.player2 = player2
+        self.p1_score = p1_score
+        self.p2_score = p2_score
+
+
+class MatchSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "player1", "player2", "p1_score", "p2_score")
+
+
+match_schema = MatchSchema()
+matches_schema = MatchSchema(many=True)
+
+
 @app.route("/player", methods=["POST"])
 def add_player():
     name = request.form["name"]
@@ -89,6 +112,12 @@ def add_result():
         "p1_current": get_rating(request.form["p1_name"]).get_json(),
         "p2_current": get_rating(request.form["p2_name"]).get_json(),
     }
+    new_match = Match(
+        request.form["p1_name"],
+        request.form["p2_name"],
+        request.form["p1_score"],
+        request.form["p2_score"],
+    )
 
     new_ratings = elo_adjust(request.form, ratings)
     for p in new_ratings:
@@ -102,6 +131,8 @@ def add_result():
             player.wins = player.wins
             player.losses += 1
         db.session.commit()
+    db.session.add(new_match)
+    db.session.commit()
     return f"Players update - {new_ratings}"
 
 
@@ -111,6 +142,19 @@ def del_player(n):
     db.session.delete(player)
     db.session.commit()
     return f"{n} removed from database"
+
+
+@app.route("/match-history", methods=["GET"])
+def get_games():
+    games = Match.query.all()
+    result = matches_schema.dump(games)
+    return jsonify(result.data)
+
+
+@app.route("/rival-history", methods=["GET"])
+def get_rival_results():
+    p1 = request.form["player1"]
+    p2 = request.form["player2"]
 
 
 if __name__ == "__main__":
