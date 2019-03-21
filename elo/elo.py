@@ -20,12 +20,14 @@ def elo_adjust(outcomes: json, current) -> List[dict]:
             "rating": int(
                 round(max(100, p1_rating + 25 * (int(outcomes["p1_score"]) - exp1)), 0)
             ),
+            "win": (1 if int(outcomes["p1_score"]) > int(outcomes["p2_score"]) else 0),
         },
         {
             "name": outcomes["p2_name"],
             "rating": int(
                 round(max(100, p2_rating + 25 * (int(outcomes["p2_score"]) - exp2)), 0)
             ),
+            "win": 1 if int(outcomes["p2_score"]) > int(outcomes["p1_score"]) else 0,
         },
     ]
     return player_updates

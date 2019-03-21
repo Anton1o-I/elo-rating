@@ -18,15 +18,19 @@ class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True)
     rating = db.Column(db.Integer, unique=False)
+    wins = db.Column(db.Integer, unique=False)
+    losses = db.Column(db.Integer, unique=False)
 
-    def __init__(self, name, rating):
+    def __init__(self, name, rating, wins, losses):
         self.name = name
         self.rating = rating
+        self.wins = wins
+        self.losses = losses
 
 
 class PlayerSchema(ma.Schema):
     class Meta:
-        fields = ("name", "rating")
+        fields = ("name", "rating", "wins", "losses")
 
 
 player_schema = PlayerSchema()
@@ -39,7 +43,7 @@ def add_player():
     try:
         player = Player.query.filter_by(name=name).first_or_404()
     except:
-        new_player = Player(name, 1600)
+        new_player = Player(name, 1600, 0, 0)
         db.session.add(new_player)
         db.session.commit()
         return jsonify(
@@ -72,8 +76,15 @@ def get_rating(name):
     return jsonify(result.data["rating"])
 
 
-@app.route("/update-ratings", methods=["POST"])
-def update_rating():
+@app.route("/player-record/<name>", methods=["GET"])
+def get_record(name):
+    player = Player.query.filter_by(name=name).first_or_404()
+    result = player_schema.dump(player)
+    return jsonify({"wins": result.data["wins"], "losses": result.data["losses"]})
+
+
+@app.route("/add-result", methods=["POST"])
+def add_result():
     ratings = {
         "p1_current": get_rating(request.form["p1_name"]).get_json(),
         "p2_current": get_rating(request.form["p2_name"]).get_json(),
@@ -84,6 +95,12 @@ def update_rating():
         player = Player.query.filter_by(name=p["name"]).first_or_404()
         player.name = p["name"]
         player.rating = p["rating"]
+        if p["win"] == 1:
+            player.wins += 1
+            player.losses = player.losses
+        else:
+            player.wins = player.wins
+            player.losses += 1
         db.session.commit()
     return f"Players update - {new_ratings}"
 
