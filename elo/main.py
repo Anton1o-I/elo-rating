@@ -3,8 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 import os
 from elo import elo_adjust
-from pydbg import dbg
-
 
 app = Flask(__name__)
 
@@ -38,10 +36,19 @@ players_schema = PlayerSchema(many=True)
 @app.route("/player", methods=["POST"])
 def add_player():
     name = request.form["name"]
-    new_player = Player(name, 1600)
-    db.session.add(new_player)
-    db.session.commit()
-    return f"success, new player {name} create with rating 1600"
+    try:
+        player = Player.query.filter_by(name=name).first_or_404()
+    except:
+        new_player = Player(name, 1600)
+        db.session.add(new_player)
+        db.session.commit()
+        return jsonify(
+            status_code=200,
+            status=f"success, new player {name} create with rating 1600",
+        )
+    return jsonify(
+        status_code=400, status=f"{name} already exists, names must be unique"
+    )
 
 
 @app.route("/player", methods=["GET"])
@@ -51,9 +58,9 @@ def get_all():
     return jsonify(result.data)
 
 
-@app.route("/player/<n>", methods=["GET"])
-def get_player(n):
-    player = Player.query.filter_by(name=n).first_or_404()
+@app.route("/player/<name>", methods=["GET"])
+def get_player(name):
+    player = Player.query.filter_by(name=name).first_or_404()
     result = player_schema.dump(player)
     return jsonify(result.data)
 
