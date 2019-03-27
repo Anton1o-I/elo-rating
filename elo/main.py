@@ -3,6 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 import os
 from elo import elo_adjust
+from passlib.apps import custom_app_context as pwd_context
+from flask_httpauth import HTTPBasicAuth
+
 
 app = Flask(__name__)
 
@@ -12,6 +15,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
 )
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
+auth = HTTPBasicAuth()
 
 
 class Player(db.Model):
@@ -20,12 +24,19 @@ class Player(db.Model):
     rating = db.Column(db.Integer, unique=False)
     wins = db.Column(db.Integer, unique=False)
     losses = db.Column(db.Integer, unique=False)
+    password_hash = db.Column(db.String(128))
 
     def __init__(self, name, rating, wins, losses):
         self.name = name
         self.rating = rating
         self.wins = wins
         self.losses = losses
+
+    def hash_password(self, password):
+        self.password_hash = pwd_context.encrypt(password)
+
+    def verify_password(self, password):
+        return pwd_context.verify(password, self.password_hash)
 
 
 class PlayerSchema(ma.Schema):
@@ -63,10 +74,12 @@ matches_schema = MatchSchema(many=True)
 @app.route("/player", methods=["POST"])
 def add_player():
     name = request.form["name"]
+    password = request.form["password"]
     try:
         player = Player.query.filter_by(name=name).first_or_404()
     except:
         new_player = Player(name, 1600, 0, 0)
+        new_player.hash_password(password)
         db.session.add(new_player)
         db.session.commit()
         return jsonify(
@@ -107,6 +120,7 @@ def get_record(name):
 
 
 @app.route("/add-result", methods=["POST"])
+@auth.login_required
 def add_result():
     ratings = {
         "p1_current": get_rating(request.form["p1_name"]).get_json(),
@@ -136,7 +150,16 @@ def add_result():
     return f"Players update - {new_ratings}"
 
 
+@auth.verify_password
+def verify_password(name, password):
+    player = Player.query.filter_by(name=name).first()
+    if not player or not player.verify_password(password):
+        return False
+    return True
+
+
 @app.route("/remove-player/<n>", methods=["DELETE"])
+@auth.login_required
 def del_player(n):
     player = Player.query.filter_by(name=n).first_or_404()
     db.session.delete(player)
