@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 import os
 from elo import elo_adjust
 from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
+from werkzeug.exceptions import NotFound
 
 
 app = Flask(__name__)
@@ -76,8 +77,8 @@ def add_player():
     name = request.form["name"]
     password = request.form["password"]
     try:
-        player = Player.query.filter_by(name=name).first_or_404()
-    except:
+        Player.query.filter_by(name=name).first_or_404()
+    except NotFound:
         new_player = Player(name, 1600, 0, 0)
         new_player.hash_password(password)
         db.session.add(new_player)
