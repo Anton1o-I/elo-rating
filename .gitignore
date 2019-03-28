@@ -15,3 +15,5 @@ build/
 dist/
 .coverage
 .pytest_cache/*
+Makefile
+*.yaml
