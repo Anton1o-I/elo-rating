@@ -5,13 +5,14 @@ import os
 from elo import elo_adjust
 from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
+from pandas import DataFrame
 
 
 app = Flask(__name__)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
-    basedir, "app.sqlite"
+    "data/database.sqlite"
 )
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
@@ -89,6 +90,18 @@ def add_player():
     return jsonify(
         status_code=400, status=f"{name} already exists, names must be unique"
     )
+
+
+@app.route("/rankings", methods=["GET"])
+def get_rankings():
+    all_players = Player.query.all()
+    result = players_schema.dump(all_players).data
+    df = (
+        DataFrame(result)
+        .reindex(["name", "rating", "wins", "losses"], axis=1)
+        .sort_values(by="rating", ascending=False)
+    )
+    return jsonify(df.to_dict("records"))
 
 
 @app.route("/player", methods=["GET"])
@@ -186,4 +199,7 @@ def get_rival_results():
 
 
 if __name__ == "__main__":
+    if not os.path.isfile("data/database.sqlite"):
+        db.create_all()
+        print("Database created")
     app.run(debug=True)
