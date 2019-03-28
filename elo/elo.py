@@ -2,7 +2,7 @@ import json
 from typing import List
 
 
-def elo_adjust(outcomes: json, current) -> List[dict]:
+def elo_adjust(outcomes: dict, current) -> List[dict]:
     """
     Takes in a score dictionary (must be len 2) in the format {key:value, key:value} where key is name
     for each player and value is their score in the game
