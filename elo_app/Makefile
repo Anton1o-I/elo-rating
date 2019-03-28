@@ -1,7 +1,7 @@
 .PHONY: build push run test
 
 VERSION = 0.0.1
-TAG = gcr.io/cognitivebus-playground/elo-rating:slack-v$(VERSION)
+TAG = gcr.io/sanguine-mark-190003/elo-rating:slack-v$(VERSION)
 
 
 build:

@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: elo
+  labels:
+    app: elo
+spec:
+  ports:
+  - port: 5000
+    name: elo
+  clusterIP: None
+  selector:
+    app: elo
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: elo-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: elo-ratings
+  labels:
+    app: elo-ratings
+spec:
+  selector:
+    matchLabels:
+      app: elo-ratings
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: elo-ratings
+    spec:
+      containers:
+      - image: gcr.io/sanguine-mark-190003/elo-rating:slack-v0.0.1
+        name: elo-ratings
+        ports:
+        - containerPort: 5000
+          name: http
+        volumeMounts:
+        - name: elo-storage
+          mountPath: "/data/"
+      volumes:
+      - name: elo-storage
+        persistentVolumeClaim:
+          claimName: elo-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elo-ratings
+  labels:
+    app: elo-ratings
+spec:
+  ports:
+  - port: 5000
+    protocol: TCP
+    name: http
+  selector:
+    app: elo-ratings
+  type: "LoadBalancer"

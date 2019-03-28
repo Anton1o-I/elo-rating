@@ -11,9 +11,10 @@ from werkzeug.exceptions import NotFound
 app = Flask(__name__)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
-    basedir, "app.sqlite"
-)
+if not os.path.exists("/data"):
+    os.makedirs("/data")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + "/data/app.sqlite"
 
 if os.environ.get("ACCESS_KEY"):
     app.config["ACCESS_KEY"] = os.environ["ACCESS_KEY"]
