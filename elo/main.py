@@ -1,9 +1,9 @@
-from flask import Flask, request, jsonify
+from functools import wraps
+from flask import Flask, request, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 import os
 from elo import elo_adjust
-from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 
@@ -14,9 +14,26 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
     basedir, "app.sqlite"
 )
+
+if os.environ.get("ACCESS_KEY"):
+    app.config["ACCESS_KEY"] = os.environ["ACCESS_KEY"]
+
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 auth = HTTPBasicAuth()
+
+
+def require_appkey(view_function):
+    @wraps(view_function)
+    def decorated_function(*args, **kwargs):
+        if request.form.get('key') and request.form.get('key') == \
+            app.config["ACCESS_KEY"]:
+            return view_function(*args, **kwargs)
+        else:
+            abort(401)
+    if app.config.get("ACCESS_KEY"):
+        return decorated_function
+    return view_function
 
 
 class Player(db.Model):
@@ -25,7 +42,6 @@ class Player(db.Model):
     rating = db.Column(db.Integer, unique=False)
     wins = db.Column(db.Integer, unique=False)
     losses = db.Column(db.Integer, unique=False)
-    password_hash = db.Column(db.String(128))
 
     def __init__(self, name, rating, wins, losses):
         self.name = name
@@ -33,11 +49,6 @@ class Player(db.Model):
         self.wins = wins
         self.losses = losses
 
-    def hash_password(self, password):
-        self.password_hash = pwd_context.encrypt(password)
-
-    def verify_password(self, password):
-        return pwd_context.verify(password, self.password_hash)
 
 
 class PlayerSchema(ma.Schema):
@@ -73,14 +84,13 @@ matches_schema = MatchSchema(many=True)
 
 
 @app.route("/player", methods=["POST"])
+@require_appkey
 def add_player():
     name = request.form["name"]
-    password = request.form["password"]
     try:
         Player.query.filter_by(name=name).first_or_404()
     except NotFound:
         new_player = Player(name, 1600, 0, 0)
-        new_player.hash_password(password)
         db.session.add(new_player)
         db.session.commit()
         return jsonify(
@@ -93,6 +103,7 @@ def add_player():
 
 
 @app.route("/player", methods=["GET"])
+@require_appkey
 def get_all():
     all_players = Player.query.all()
     result = players_schema.dump(all_players)
@@ -100,6 +111,7 @@ def get_all():
 
 
 @app.route("/player/<name>", methods=["GET"])
+@require_appkey
 def get_player(name):
     player = Player.query.filter_by(name=name).first_or_404()
     result = player_schema.dump(player)
@@ -107,6 +119,7 @@ def get_player(name):
 
 
 @app.route("/player-rating/<name>", methods=["GET"])
+@require_appkey
 def get_rating(name):
     player = Player.query.filter_by(name=name).first_or_404()
     result = player_schema.dump(player)
@@ -114,6 +127,7 @@ def get_rating(name):
 
 
 @app.route("/player-record/<name>", methods=["GET"])
+@require_appkey
 def get_record(name):
     player = Player.query.filter_by(name=name).first_or_404()
     result = player_schema.dump(player)
@@ -121,7 +135,7 @@ def get_record(name):
 
 
 @app.route("/add-result", methods=["POST"])
-@auth.login_required
+@require_appkey
 def add_result():
     ratings = {
         "p1_current": get_rating(request.form["p1_name"]).get_json(),
@@ -151,16 +165,9 @@ def add_result():
     return f"Players update - {new_ratings}"
 
 
-@auth.verify_password
-def verify_password(name, password):
-    player = Player.query.filter_by(name=name).first()
-    if not player or not player.verify_password(password):
-        return False
-    return True
-
 
 @app.route("/remove-player/<n>", methods=["DELETE"])
-@auth.login_required
+@require_appkey
 def del_player(n):
     player = Player.query.filter_by(name=n).first_or_404()
     db.session.delete(player)
@@ -169,6 +176,7 @@ def del_player(n):
 
 
 @app.route("/match-history", methods=["GET"])
+@require_appkey
 def get_games():
     games = Match.query.all()
     result = matches_schema.dump(games)
