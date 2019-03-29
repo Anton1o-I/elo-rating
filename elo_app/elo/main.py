@@ -195,6 +195,11 @@ def get_rival_results():
     return jsonify(result1.data, result2.data)
 
 
+@app.route("/", methods=["GET"])
+def index():
+    return ("", 200)
+
+
 if __name__ == "__main__":
     db.create_all()
     app.run(debug=True, host="0.0.0.0")
