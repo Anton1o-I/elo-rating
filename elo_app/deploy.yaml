@@ -27,8 +27,14 @@ spec:
         app: elo-ratings
     spec:
       containers:
-      - image: gcr.io/sanguine-mark-190003/elo-rating:slack-v0.0.3
+      - image: gcr.io/sanguine-mark-190003/elo-rating:slack-v0.0.4
         name: elo-ratings
+        env:
+          - name: ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: keys
+                key: access-key
         ports:
         - containerPort: 5000
         volumeMounts:

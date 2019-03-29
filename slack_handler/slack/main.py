@@ -14,6 +14,8 @@
 # [START functions_slack_setup]
 import json
 from flask import jsonify
+import requests
+import re
 
 with open('config.json', 'r') as f:
     data = f.read()
@@ -71,6 +73,53 @@ def format_slack_message(query, response):
 # [END functions_slack_format]
 
 
+def handle_request(form):
+    endpoint = config["API_URL"]
+    message = {
+        "response_type": "in_channel",
+        "text": "invalid command"
+    }
+    key = config["API_KEY"]
+    headers = {"api-key": key}
+    user1 = form.get("user_id")
+    text_list = form["text"].split()
+    if not text_list:
+        return message
+    cmd = text_list[0]
+    player_regex = re.compile(r"(?<=<@)U\w+(?=|\w+>)")
+
+    if cmd == "game":
+        user2, score1, score2 = text_list[1:]
+        score1, score2 = int(score1), int(score2)
+        user2 = player_regex.search(user2).group()
+        # create new user if not exist
+        for u in user1, user2:
+            requests.post(endpoint + "/player", data={"name": u},
+                    headers=headers)
+        data = {
+                "p1_name": user1,
+                "p2_name": user2,
+                "p1_score": score1,
+                "p2_score": score2
+                }
+        r = requests.post(endpoint + "/add-result", data=data, headers=headers)
+        success = r.status_code == 200
+        message["text"] = "Game recorded" if success else "Error recording game"
+    elif cmd == "leaderboard":
+        r = requests.get(endpoint + "/player", headers=headers)
+        message["text"] = r.text if r.status_code == 200 else "problem fetching data"
+    elif cmd == "history":
+        r = requests.get(endpoint + "/match-history", headers=headers)
+        message["text"] = r.text if r.status_code == 200 else "problem fetching data"
+    elif cmd == "rating":
+        if len(text_list) > 1:
+            m = player_regex.search(text_list[1])
+            if m:
+                user1= m.group()
+        r = requests.get(endpoint + f"/player/rating/{user1}", headers=headers)
+        message["text"] = r.text if r.status_code == 200 else "problem fetching data"
+    return message
+
 
 # [START functions_slack_search]
 def slack_handler(request):
@@ -78,7 +127,6 @@ def slack_handler(request):
         return 'Only POST requests are accepted', 405
 
     verify_web_hook(request.form)
-    api_response = requests.post()
-    return jsonify({"text": "hello world"})
+    return jsonify(handle_request(request.form))
 # [END functions_slack_search]
 

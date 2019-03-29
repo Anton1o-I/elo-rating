@@ -27,7 +27,8 @@ auth = HTTPBasicAuth()
 def require_appkey(view_function):
     @wraps(view_function)
     def decorated_function(*args, **kwargs):
-        if request.form.get('key') and request.form.get('key') == \
+        if request.headers.get('api-key') and \
+        request.headers.get('api-key') == \
             app.config["ACCESS_KEY"]:
             return view_function(*args, **kwargs)
         else:
