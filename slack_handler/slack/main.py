@@ -15,7 +15,6 @@
 import json
 from flask import jsonify
 import requests
-import re
 
 with open('config.json', 'r') as f:
     data = f.read()
@@ -31,47 +30,6 @@ def verify_web_hook(form):
 # [END functions_verify_webhook]
 
 
-# [START functions_slack_format]
-def format_slack_message(query, response):
-    entity = None
-    if response and response.get('itemListElement') is not None and \
-       len(response['itemListElement']) > 0:
-        entity = response['itemListElement'][0]['result']
-
-    message = {
-        'response_type': 'in_channel',
-        'text': 'Query: {}'.format(query),
-        'attachments': []
-    }
-
-    attachment = {}
-    if entity:
-        name = entity.get('name', '')
-        description = entity.get('description', '')
-        detailed_desc = entity.get('detailedDescription', {})
-        url = detailed_desc.get('url')
-        article = detailed_desc.get('articleBody')
-        image_url = entity.get('image', {}).get('contentUrl')
-
-        attachment['color'] = '#3367d6'
-        if name and description:
-            attachment['title'] = '{}: {}'.format(entity["name"],
-                                                  entity["description"])
-        elif name:
-            attachment['title'] = name
-        if url:
-            attachment['title_link'] = url
-        if article:
-            attachment['text'] = article
-        if image_url:
-            attachment['image_url'] = image_url
-    else:
-        attachment['text'] = 'No results match your query.'
-    message['attachments'].append(attachment)
-
-    return message
-# [END functions_slack_format]
-
 
 def handle_request(form):
     endpoint = config["API_URL"]
@@ -81,17 +39,15 @@ def handle_request(form):
     }
     key = config["API_KEY"]
     headers = {"api-key": key}
-    user1 = form.get("user_id")
+    user1 = form.get("user_name")
     text_list = form["text"].split()
     if not text_list:
         return message
     cmd = text_list[0]
-    player_regex = re.compile(r"(?<=<@)U\w+(?=|\w+>)")
 
     if cmd == "game":
         user2, score1, score2 = text_list[1:]
         score1, score2 = int(score1), int(score2)
-        user2 = player_regex.search(user2).group()
         # create new user if not exist
         for u in user1, user2:
             requests.post(endpoint + "/player", data={"name": u},
@@ -113,9 +69,7 @@ def handle_request(form):
         message["text"] = r.text if r.status_code == 200 else "problem fetching data"
     elif cmd == "rating":
         if len(text_list) > 1:
-            m = player_regex.search(text_list[1])
-            if m:
-                user1= m.group()
+            user1 = text_list[1]
         r = requests.get(endpoint + f"/player/rating/{user1}", headers=headers)
         message["text"] = r.text if r.status_code == 200 else "problem fetching data"
     return message
