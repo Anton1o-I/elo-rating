@@ -55,6 +55,7 @@ class Match(db.Model):
     player2 = db.Column(db.String(80), unique=False)
     p1_score = db.Column(db.Integer, unique=False)
     p2_score = db.Column(db.Integer, unique=False)
+    status = db.Column(db.String(10), unique=False)
 
     def __init__(self, player1, player2, p1_score, p2_score):
         self.player1 = player1
@@ -62,10 +63,9 @@ class Match(db.Model):
         self.p1_score = p1_score
         self.p2_score = p2_score
 
-
 class MatchSchema(ma.Schema):
     class Meta:
-        fields = ("id", "player1", "player2", "p1_score", "p2_score")
+        fields = ("id", "player1", "player2", "p1_score", "p2_score", "status")
 
 
 match_schema = MatchSchema()
@@ -77,7 +77,7 @@ def add_player():
     name = request.form["name"]
     password = request.form["password"]
     try:
-        player = Player.query.filter_by(name=name).first_or_404()
+        _ = Player.query.filter_by(name=name).first_or_404()
     except:
         new_player = Player(name, 1600, 0, 0)
         new_player.hash_password(password)
@@ -135,18 +135,41 @@ def get_record(name):
 @app.route("/add-result", methods=["POST"])
 @auth.login_required
 def add_result():
-    ratings = {
-        "p1_current": get_rating(request.form["p1_name"]).get_json(),
-        "p2_current": get_rating(request.form["p2_name"]).get_json(),
-    }
+    if auth.username() != request.form["p1_name"]:
+        return f"Game not posted - player1 "
     new_match = Match(
         request.form["p1_name"],
         request.form["p2_name"],
         request.form["p1_score"],
         request.form["p2_score"],
     )
+    new_match.status = "pending"
+    db.session.add(new_match)
+    db.session.commit()
+    return f"Match {new_match.id} pending approval"
 
-    new_ratings = elo_adjust(request.form, ratings)
+
+@auth.verify_password
+def verify_password(name, password):
+    player = Player.query.filter_by(name=name).first()
+    if not player or not player.verify_password(password):
+        return False
+    return True
+
+@app.route("/confirm-match", methods=["GET", "POST"])
+@auth.login_required
+def confirm_result():
+    match_id = int(request.form["id"])
+    m = Match.query.filter_by(id=match_id).first_or_404()
+    match = match_schema.dump(m)
+    if m.player2 != auth.username():
+        return f"Authenticator must be {m.player2} not {auth.username()}"
+    player = Player.query.filter_by(name=m.player2).first_or_404()
+    ratings = {
+        "p1_current": get_rating(m.player1).get_json(),
+        "p2_current": get_rating(m.player2).get_json(),
+    }
+    new_ratings = elo_adjust(match.data, ratings)
     for p in new_ratings:
         player = Player.query.filter_by(name=p["name"]).first_or_404()
         player.name = p["name"]
@@ -157,22 +180,12 @@ def add_result():
         else:
             player.wins = player.wins
             player.losses += 1
+        m.status = "confirmed"
         db.session.commit()
-    db.session.add(new_match)
-    db.session.commit()
-    return f"Players update - {new_ratings}"
-
-
-@auth.verify_password
-def verify_password(name, password):
-    player = Player.query.filter_by(name=name).first()
-    if not player or not player.verify_password(password):
-        return False
-    return True
+    return "Successfully confirmed match result"
 
 
 @app.route("/remove-player/<n>", methods=["DELETE"])
-@auth.login_required
 def del_player(n):
     player = Player.query.filter_by(name=n).first_or_404()
     db.session.delete(player)
