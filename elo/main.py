@@ -162,6 +162,8 @@ def confirm_result():
     match_id = int(request.form["id"])
     m = Match.query.filter_by(id=match_id).first_or_404()
     match = match_schema.dump(m)
+    if m.status == "confirmed":
+        return f"Match already confirmed"
     if m.player2 != auth.username():
         return f"Authenticator must be {m.player2} not {auth.username()}"
     player = Player.query.filter_by(name=m.player2).first_or_404()
