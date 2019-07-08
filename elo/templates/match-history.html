@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+<h2> Match History </h2>
+{% for match in matches %}
+<div>
+    <p> MatchID: {{ match.id }} | {{ match.player1 }}: {{ match.p1_score }} - {{ match.player2 }}: {{ match.p2_score }}
+    </p>
+</div>
+{% endfor %}
+{% endblock %}

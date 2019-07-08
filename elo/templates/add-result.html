@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Add Match Result</h1>
+<form action="" method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        {{ form.username.label }}<br>
+        {{ form.username(size=32) }}
+    </div>
+    <p>
+        {{ form.password.label }}<br>
+        {{ form.password(size=32) }}
+    </p>
+    <p>
+        {{ form.p2_name.label }}<br>
+        {{ form.p2_name(size=32) }}
+    </p>
+    <p>
+        {{ form.p1_score.label }}<br>
+        {{ form.p1_score(size=32) }}
+    </p>
+    <p>
+        {{ form.p2_score.label }}<br>
+        {{ form.p2_score(size=32) }}
+    </p>
+    <p>{{ form.submit() }}</p>
+</form>
+{% endblock %}

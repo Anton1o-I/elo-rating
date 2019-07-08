@@ -1,14 +1,17 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from forms import AddPlayerForm, ConfirmForm, ResultForm, RivalryForm
 import os
 from elo import elo_adjust
 from passlib.apps import custom_app_context as pwd_context
 from flask_httpauth import HTTPBasicAuth
 from pandas import DataFrame
+from config import Config
 
 
 app = Flask(__name__)
+app.config.from_object(Config)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
@@ -63,6 +66,7 @@ class Match(db.Model):
         self.p1_score = p1_score
         self.p2_score = p2_score
 
+
 class MatchSchema(ma.Schema):
     class Meta:
         fields = ("id", "player1", "player2", "p1_score", "p2_score", "status")
@@ -72,24 +76,32 @@ match_schema = MatchSchema()
 matches_schema = MatchSchema(many=True)
 
 
-@app.route("/player", methods=["POST"])
+@auth.verify_password
+def verify_password(name, password):
+    player = Player.query.filter_by(name=name).first()
+    if not player or not player.verify_password(password):
+        return False
+    return True
+
+
+@app.route("/add-player", methods=["GET", "POST"])
 def add_player():
-    name = request.form["name"]
-    password = request.form["password"]
-    try:
-        _ = Player.query.filter_by(name=name).first_or_404()
-    except:
-        new_player = Player(name, 1600, 0, 0)
-        new_player.hash_password(password)
-        db.session.add(new_player)
-        db.session.commit()
-        return jsonify(
-            status_code=200,
-            status=f"success, new player {name} create with rating 1600",
-        )
-    return jsonify(
-        status_code=400, status=f"{name} already exists, names must be unique"
-    )
+    form = AddPlayerForm()
+    if form.validate_on_submit():
+        try:
+            _ = Player.query.filter_by(name=request.form["username"]).first_or_404()
+        except:
+            new_player = Player(request.form["username"], 1600, 0, 0)
+            new_player.hash_password(request.form["password"])
+            db.session.add(new_player)
+            db.session.commit()
+            flash(
+                "Player {} added with an elo rating of 1600".format(
+                    request.form["username"]
+                )
+            )
+            return redirect("/rankings")
+    return render_template("add-player.html", title="Add Player", form=form)
 
 
 @app.route("/rankings", methods=["GET"])
@@ -101,7 +113,8 @@ def get_rankings():
         .reindex(["name", "rating", "wins", "losses"], axis=1)
         .sort_values(by="rating", ascending=False)
     )
-    return jsonify(df.to_dict("records"))
+    rankings = df.to_dict("records")
+    return render_template("rankings.html", len=len(rankings), rankings=rankings)
 
 
 @app.route("/player", methods=["GET"])
@@ -132,62 +145,68 @@ def get_record(name):
     return jsonify({"wins": result.data["wins"], "losses": result.data["losses"]})
 
 
-@app.route("/add-result", methods=["POST"])
-@auth.login_required
+@app.route("/add-match", methods=["GET", "POST"])
 def add_result():
-    if auth.username() != request.form["p1_name"]:
-        return f"Game not posted - player1 "
-    new_match = Match(
-        request.form["p1_name"],
-        request.form["p2_name"],
-        request.form["p1_score"],
-        request.form["p2_score"],
-    )
-    new_match.status = "pending"
-    db.session.add(new_match)
-    db.session.commit()
-    return f"Match {new_match.id} pending approval"
+    form = ResultForm()
+    if form.validate_on_submit():
+        p = Player.query.filter_by(name=request.form["username"]).first_or_404()
+        if p.verify_password(request.form["password"]):
+            new_match = Match(
+                request.form["username"],
+                request.form["p2_name"],
+                request.form["p1_score"],
+                request.form["p2_score"],
+            )
+            new_match.status = "pending"
+            db.session.add(new_match)
+            db.session.commit()
+            return redirect("/rankings")
+        else:
+            return jsonify("Authentication error", status_code=401)
+    return render_template("add-result.html", title="Add Match Result", form=form)
 
-
-@auth.verify_password
-def verify_password(name, password):
-    player = Player.query.filter_by(name=name).first()
-    if not player or not player.verify_password(password):
-        return False
-    return True
 
 @app.route("/confirm-match", methods=["GET", "POST"])
-@auth.login_required
 def confirm_result():
-    match_id = int(request.form["id"])
-    m = Match.query.filter_by(id=match_id).first_or_404()
-    match = match_schema.dump(m)
-    if m.status == "confirmed":
-        return f"Match already confirmed"
-    if m.player2 != auth.username():
-        return f"Authenticator must be {m.player2} not {auth.username()}"
-    player = Player.query.filter_by(name=m.player2).first_or_404()
-    ratings = {
-        "p1_current": get_rating(m.player1).get_json(),
-        "p2_current": get_rating(m.player2).get_json(),
-    }
-    new_ratings = elo_adjust(match.data, ratings)
-    for p in new_ratings:
-        player = Player.query.filter_by(name=p["name"]).first_or_404()
-        player.name = p["name"]
-        player.rating = p["rating"]
-        if p["win"] == 1:
-            player.wins += 1
-            player.losses = player.losses
-        else:
-            player.wins = player.wins
-            player.losses += 1
-        m.status = "confirmed"
-        db.session.commit()
-    return "Successfully confirmed match result"
+    d = get_pending()
+    form = ConfirmForm()
+    if form.validate_on_submit():
+        p = Player.query.filter_by(name=request.form["username"]).first_or_404()
+        if p.verify_password(form.password.data):
+            m = Match.query.filter(Match.id == form.match_id.data).first_or_404()
+            match = match_schema.dump(m).data
+            if m.status == "confirmed":
+                return f"Match already confirmed"
+            if m.player2 != request.form["username"]:
+                return f"Authenticator must be {m.player2} not {form.username.data}"
+            if request.form["confirm"] == "deny":
+                m.status = "denied"
+                return redirect("/match-history")
+            ratings = {
+                "p1_current": get_rating(m.player1).get_json(),
+                "p2_current": get_rating(m.player2).get_json(),
+            }
+            new_ratings = elo_adjust(match, ratings)
+            for p in new_ratings:
+                player = Player.query.filter_by(name=p["name"]).first_or_404()
+                player.name = p["name"]
+                player.rating = p["rating"]
+                if p["win"] == 1:
+                    player.wins += 1
+                    player.losses = player.losses
+                else:
+                    player.wins = player.wins
+                    player.losses += 1
+                db.session.commit()
+            m.status = "confirmed"
+            db.session.commit()
+            return redirect(f"/match-history")
+    return render_template(
+        "confirm-result.html", title="Confirm Match Result", form=form, matches=d
+    )
 
 
-@app.route("/remove-player/<n>", methods=["DELETE"])
+@app.route("/remove-player/<n>", methods=["GET", "DELETE"])
 def del_player(n):
     player = Player.query.filter_by(name=n).first_or_404()
     db.session.delete(player)
@@ -196,21 +215,43 @@ def del_player(n):
 
 
 @app.route("/match-history", methods=["GET"])
-def get_games():
-    games = Match.query.all()
+def get_confirmed():
+    games = Match.query.filter(Match.status == "confirmed")
     result = matches_schema.dump(games)
-    return jsonify(result.data)
+    return render_template("match-history.html", matches=result.data)
 
 
-@app.route("/rival-history", methods=["GET"])
+def get_pending():
+    games = Match.query.filter(Match.status == "pending")
+    result = matches_schema.dump(games)
+    return result.data
+
+
+@app.route("/rival-history", methods=["GET", "POST"])
 def get_rival_results():
-    p1 = request.form["player1"]
-    p2 = request.form["player2"]
-    match1 = Match.query.filter(Match.player1 == p1, Match.player2 == p2)
-    match2 = Match.query.filter(Match.player1 == p2, Match.player2 == p1)
-    result1 = matches_schema.dump(match1)
-    result2 = matches_schema.dump(match2)
-    return jsonify(result1.data, result2.data)
+    form = RivalryForm()
+    if form.validate_on_submit():
+        p1 = request.form["player1"]
+        p2 = request.form["player2"]
+        match1 = Match.query.filter(
+            ((Match.player1 == p1) & (Match.player2 == p2))
+            | ((Match.player1 == p2) & (Match.player2 == p1))
+        )
+        results = matches_schema.dump(match1).data
+        empty = {"wins": 0, "losses": 0}
+        keys = [p1, p2]
+        p_dict = {key: empty.copy() for key in keys}
+        for i in results:
+            if i["p1_score"] > i["p2_score"]:
+                p_dict[i["player1"]]["wins"] += 1
+                p_dict[i["player2"]]["losses"] += 1
+            elif i["p1_score"] < i["p2_score"]:
+                p_dict[i["player2"]]["wins"] += 1
+                p_dict[i["player1"]]["losses"] += 1
+        return render_template(
+            "rival-history.html", form=form, matches=results, summary=p_dict
+        )
+    return render_template("rival-history.html", form=form, summary=dict())
 
 
 if __name__ == "__main__":
