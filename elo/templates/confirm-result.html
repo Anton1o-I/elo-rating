@@ -13,11 +13,12 @@
         {{ form.password(size=32) }}
     </p>
     <p>
-        {{ form.match_id.label }}<br>
+        {{ form.match_id.label }} <br>
+        {{ form.match_id(size=32) }}
     </p>
     Status: {{ form.confirm }} <br>
     <br>
-    <p>{{ form.submit() }}</p>
+    <div> <button type="submit" class="btn btn-primary btn-lg">Submit</div>
 </form>
 {% for match in matches %}
 <div>

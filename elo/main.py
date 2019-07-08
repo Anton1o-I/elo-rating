@@ -195,7 +195,8 @@ def confirm_result():
                 return f"Authenticator must be {m.player2} not {form.username.data}"
             if request.form["confirm"] == "deny":
                 m.status = "denied"
-                return redirect("/match-history")
+                db.session.commit()
+                return redirect("/confirm-match")
             ratings = {
                 "p1_current": get_rating(m.player1).get_json(),
                 "p2_current": get_rating(m.player2).get_json(),
@@ -214,7 +215,7 @@ def confirm_result():
                 db.session.commit()
             m.status = "confirmed"
             db.session.commit()
-            return redirect(f"/match-history")
+            return redirect(f"/confirm-match")
     return render_template(
         "confirm-result.html", title="Confirm Match Result", form=form, matches=d
     )

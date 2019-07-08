@@ -6,7 +6,7 @@ from wtforms.validators import DataRequired
 class ResultForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
-    p2_name = StringField("Player2", validators=[DataRequired()])
+    p2_name = StringField("Player2 Name", validators=[DataRequired()])
     p1_score = StringField("Player1 Score", validators=[DataRequired()])
     p2_score = StringField("Player2 Score", validators=[DataRequired()])
     submit = SubmitField("Add Result")
