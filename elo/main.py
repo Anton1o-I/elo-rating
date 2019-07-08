@@ -244,6 +244,11 @@ def get_pending():
     return result.data
 
 
+@app.route("/")
+def home():
+    return redirect("/rankings")
+
+
 # get_rival_results aggregates the history of two players matches against
 # eachother.
 @app.route("/rival-history", methods=["GET", "POST"])
