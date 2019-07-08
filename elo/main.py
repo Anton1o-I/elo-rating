@@ -21,7 +21,7 @@ db = SQLAlchemy(app)
 ma = Marshmallow(app)
 auth = HTTPBasicAuth()
 
-
+# Player schema for sqlite database
 class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True)
@@ -36,9 +36,11 @@ class Player(db.Model):
         self.wins = wins
         self.losses = losses
 
+    # method to create a password hash
     def hash_password(self, password):
         self.password_hash = pwd_context.encrypt(password)
 
+    # method to verify a password for the Person object
     def verify_password(self, password):
         return pwd_context.verify(password, self.password_hash)
 
@@ -52,6 +54,7 @@ player_schema = PlayerSchema()
 players_schema = PlayerSchema(many=True)
 
 
+# Match schema for storing state of a match
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     player1 = db.Column(db.String(80), unique=False)
@@ -84,6 +87,8 @@ def verify_password(name, password):
     return True
 
 
+# add_player will add a player to the player table and hash their password
+# for future auth
 @app.route("/add-player", methods=["GET", "POST"])
 def add_player():
     form = AddPlayerForm()
@@ -104,6 +109,7 @@ def add_player():
     return render_template("add-player.html", title="Add Player", form=form)
 
 
+# get_rankings will return the rankings in order for all players
 @app.route("/rankings", methods=["GET"])
 def get_rankings():
     all_players = Player.query.all()
@@ -117,6 +123,7 @@ def get_rankings():
     return render_template("rankings.html", len=len(rankings), rankings=rankings)
 
 
+# get_all queries the database and returns all the players in the database unordered
 @app.route("/player", methods=["GET"])
 def get_all():
     all_players = Player.query.all()
@@ -124,6 +131,7 @@ def get_all():
     return jsonify(result.data)
 
 
+# get_player will query for a specific player and return their current state
 @app.route("/player/<name>", methods=["GET"])
 def get_player(name):
     player = Player.query.filter_by(name=name).first_or_404()
@@ -131,6 +139,7 @@ def get_player(name):
     return jsonify(result.data)
 
 
+# get_rating will get the current rating for a single player
 @app.route("/player-rating/<name>", methods=["GET"])
 def get_rating(name):
     player = Player.query.filter_by(name=name).first_or_404()
@@ -138,6 +147,7 @@ def get_rating(name):
     return jsonify(result.data["rating"])
 
 
+# get_record will return the win/loss record for a single player
 @app.route("/player-record/<name>", methods=["GET"])
 def get_record(name):
     player = Player.query.filter_by(name=name).first_or_404()
@@ -145,6 +155,8 @@ def get_record(name):
     return jsonify({"wins": result.data["wins"], "losses": result.data["losses"]})
 
 
+# add_result will add the results of a match to the database with a status of "pending"
+# p1_score needs to match score for the person entering the game result
 @app.route("/add-match", methods=["GET", "POST"])
 def add_result():
     form = ResultForm()
@@ -166,6 +178,8 @@ def add_result():
     return render_template("add-result.html", title="Add Match Result", form=form)
 
 
+# confirm_result provides two party auth to ensure that both parties sign off
+# on the result of a match.
 @app.route("/confirm-match", methods=["GET", "POST"])
 def confirm_result():
     d = get_pending()
@@ -206,6 +220,7 @@ def confirm_result():
     )
 
 
+# del_player will delete the specified player from the db.
 @app.route("/remove-player/<n>", methods=["GET", "DELETE"])
 def del_player(n):
     player = Player.query.filter_by(name=n).first_or_404()
@@ -214,6 +229,7 @@ def del_player(n):
     return f"{n} removed from database"
 
 
+# get_confirmed returns all of the games that have occured in the database
 @app.route("/match-history", methods=["GET"])
 def get_confirmed():
     games = Match.query.filter(Match.status == "confirmed")
@@ -221,12 +237,15 @@ def get_confirmed():
     return render_template("match-history.html", matches=result.data)
 
 
+# get_pending returns the list of games that have not yet been confirmed/denied
 def get_pending():
     games = Match.query.filter(Match.status == "pending")
     result = matches_schema.dump(games)
     return result.data
 
 
+# get_rival_results aggregates the history of two players matches against
+# eachother.
 @app.route("/rival-history", methods=["GET", "POST"])
 def get_rival_results():
     form = RivalryForm()
