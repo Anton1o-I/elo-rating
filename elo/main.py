@@ -259,8 +259,16 @@ def get_rival_results():
         p1 = request.form["player1"]
         p2 = request.form["player2"]
         match1 = Match.query.filter(
-            ((Match.player1 == p1) & (Match.player2 == p2))
-            | ((Match.player1 == p2) & (Match.player2 == p1))
+            (
+                (Match.player1 == p1)
+                & (Match.player2 == p2)
+                & (Match.status == "confirmed")
+            )
+            | (
+                (Match.player1 == p2)
+                & (Match.player2 == p1)
+                & (Match.status == "confirmed")
+            )
         )
         results = matches_schema.dump(match1).data
         empty = {"wins": 0, "losses": 0}
