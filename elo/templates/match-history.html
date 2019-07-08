@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+<h2> Match History </h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Player1</th>
+            <th scope="col">Player1 Score</th>
+            <th scope="col">Player2</th>
+            <th scope="col">Player2 Score</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for match in matches %}
+        <th scope="row"> {{ match.id }} </th>
+        <td> {{ match.player1 }} </td>
+        <td> {{match.p1_score }} </td>
+        <td> {{ match.player2 }} </td>
+        <td> {{match.p2_score }} </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    {% endblock %}

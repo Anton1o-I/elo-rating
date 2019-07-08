@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Confirm Match</h2>
+<form action="" method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.username.label }}<br>
+        {{ form.username(size=32) }}
+    </p>
+    <p>
+        {{ form.password.label }}<br>
+        {{ form.password(size=32) }}
+    </p>
+    <p>
+        {{ form.match_id.label }} <br>
+        {{ form.match_id(size=32) }}
+    </p>
+    Status: {{ form.confirm }} <br>
+    <br>
+    <div> <button type="submit" class="btn btn-primary btn-lg">Submit</div>
+</form>
+{% for match in matches %}
+<div>
+    <p> MatchID: {{ match.id }} | {{ match.player1 }}: {{ match.p1_score }} - {{ match.player2 }}: {{ match.p2_score }}
+        |
+        Status: {{ match.status }}</p>
+</div>
+{% endfor %}
+{% endblock %}

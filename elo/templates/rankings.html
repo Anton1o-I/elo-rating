@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2> Current Rankings </h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">Name</th>
+            <th scope="col">Ratings</th>
+            <th scope="col">Wins</th>
+            <th scope="col">Losses</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in range(0, len) %}
+        <tr>
+            <th scope="row">{{ i+1 }}</th>
+            <td>{{ rankings[i].name }}</td>
+            <td>{{ rankings[i].rating }}</td>
+            <td>{{ rankings[i].wins }}</td>
+            <td>{{ rankings[i].losses }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    {% endblock %}
