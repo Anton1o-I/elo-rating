@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Remove Player</h1>
+<form action="" method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.username.label }}<br>
+        {{ form.username(size=32) }}
+    </p>
+    <p>
+        {{ form.password.label }}<br>
+        {{ form.password(size=32) }}
+    </p>
+    <p>
+        {{ form.remove.label }}<br>
+        {{ form.remove(size=32) }}
+    </p>
+    <div><button type="submit" class="btn btn-primary btn-lg">Submit</div>
+</form>
+{% endblock %}

@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, Length
 
 
 class ResultForm(FlaskForm):
@@ -13,7 +13,9 @@ class ResultForm(FlaskForm):
 
 
 class ConfirmForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired()])
+    username = StringField(
+        "Username", validators=[DataRequired(), Length(min=1, max=20)]
+    )
     password = PasswordField("Password", validators=[DataRequired()])
     match_id = StringField("Match ID", validators=[DataRequired()])
     confirm = SelectField(
@@ -34,3 +36,10 @@ class RivalryForm(FlaskForm):
     player1 = StringField("Player 1", validators=[DataRequired()])
     player2 = StringField("Player 2", validators=[DataRequired()])
     submit = SubmitField("View History")
+
+
+class RemovePlayerForm(FlaskForm):
+    remove = StringField("Player", validators=[DataRequired()])
+    username = StringField("Admin", validators=[DataRequired()])
+    password = PasswordField("Password", validators=[DataRequired()])
+    submit = SubmitField("Add Result")

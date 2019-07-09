@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, render_template, redirect, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-from forms import AddPlayerForm, ConfirmForm, ResultForm, RivalryForm
+from forms import AddPlayerForm, ConfirmForm, ResultForm, RivalryForm, RemovePlayerForm
 import os
 from elo import elo_adjust
 from passlib.apps import custom_app_context as pwd_context
@@ -119,6 +119,7 @@ def get_rankings():
         .reindex(["name", "rating", "wins", "losses"], axis=1)
         .sort_values(by="rating", ascending=False)
     )
+    df = df[df["name"] != "admin"]
     rankings = df.to_dict("records")
     return render_template("rankings.html", len=len(rankings), rankings=rankings)
 
@@ -222,12 +223,20 @@ def confirm_result():
 
 
 # del_player will delete the specified player from the db.
-@app.route("/remove-player/<n>", methods=["GET", "DELETE"])
-def del_player(n):
-    player = Player.query.filter_by(name=n).first_or_404()
-    db.session.delete(player)
-    db.session.commit()
-    return f"{n} removed from database"
+@app.route("/remove-player", methods=["GET", "DELETE", "POST"])
+def del_player():
+    form = RemovePlayerForm()
+    if form.validate_on_submit():
+        authp = Player.query.filter_by(name=request.form["username"]).first_or_404()
+        if authp.name != "admin":
+            jsonify("Unauthorized", status=400)
+        if authp.verify_password(request.form["password"]):
+            player = Player.query.filter_by(name=request.form["remove"]).first_or_404()
+            db.session.delete(player)
+            db.session.commit()
+            return redirect("/")
+        return jsonify("Unauthorized", status=400)
+    return render_template("remove-player.html", title="Remove Player", form=form)
 
 
 # get_confirmed returns all of the games that have occured in the database
@@ -287,8 +296,12 @@ def get_rival_results():
     return render_template("rival-history.html", form=form, summary=dict())
 
 
-if __name__ == "__main__":
+@app.before_first_request
+def activate_db():
     if not os.path.isfile("data/database.sqlite"):
         db.create_all()
-        print("Database created")
+
+
+if __name__ == "__main__":
+
     app.run(debug=True)
