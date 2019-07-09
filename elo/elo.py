@@ -20,7 +20,6 @@ def elo_adjust(outcomes: json, current) -> List[dict]:
     exp2 = 1 / (1 + 10 ** ((p1_rating - p2_rating) / 400))
     p1_vic = 1 if int(outcomes["p1_score"]) > int(outcomes["p2_score"]) else 0
     p2_vic = 1 if int(outcomes["p2_score"]) > int(outcomes["p1_score"]) else 0
-    print(exp1, p1_vic, exp2, p2_vic)
     player_updates = [
         {
             "name": outcomes["player1"],
