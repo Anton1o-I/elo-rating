@@ -291,4 +291,4 @@ if __name__ == "__main__":
     if not os.path.isfile("data/database.sqlite"):
         db.create_all()
         print("Database created")
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
