@@ -286,9 +286,10 @@ def get_rival_results():
         )
     return render_template("rival-history.html", form=form, summary=dict())
 
-
-if __name__ == "__main__":
+@app.before_first_request
+def activate_db():
     if not os.path.isfile("data/database.sqlite"):
         db.create_all()
-        print("Database created")
+
+if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
