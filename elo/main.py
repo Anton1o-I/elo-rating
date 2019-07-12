@@ -15,7 +15,7 @@ app.config.from_object(Config)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
-    "data/database.sqlite"
+    "data/database2.sqlite"
 )
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
