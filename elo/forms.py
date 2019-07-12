@@ -1,27 +1,43 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, SelectField
-from wtforms.validators import DataRequired
+from wtforms import (
+    StringField,
+    PasswordField,
+    SubmitField,
+    SelectField,
+    SelectMultipleField,
+    widgets,
+)
+from wtforms.validators import DataRequired, Length
 
 
 class ResultForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired()])
+    username = StringField("Username", validators=[DataRequired(), Length(1, 20)])
     password = PasswordField("Password", validators=[DataRequired()])
-    p2_name = StringField("Player2 Name", validators=[DataRequired()])
+    p2_name = SelectField("Player2 Name", validators=[DataRequired()])
     p1_score = StringField("Player1 Score", validators=[DataRequired()])
     p2_score = StringField("Player2 Score", validators=[DataRequired()])
     submit = SubmitField("Add Result")
+
+    def __init__(self, players):
+        super(ResultForm, self).__init__()
+        self.p2_name.choices = [(n["name"], n["name"]) for n in players]
+
+
+class MultiCheckboxField(SelectMultipleField):
+    widget = widgets.ListWidget()
+    option_widget = widgets.CheckboxInput()
 
 
 class ConfirmForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
-    match_id = StringField("Match ID", validators=[DataRequired()])
-    confirm = SelectField(
-        "Status",
-        choices=[("confirm", "Confirm"), ("deny", "Deny")],
-        validators=[DataRequired()],
-    )
+    match_id = MultiCheckboxField("Match ID", validators=[DataRequired()])
+    confirm = SelectField("Status", choices=[("confirm", "Confirm"), ("deny", "Deny")])
     submit = SubmitField("Add Result")
+
+    def __init__(self, matches):
+        super(ConfirmForm, self).__init__()
+        self.match_id.choices = [(i, f"MatchID:{i}") for i in matches]
 
 
 class AddPlayerForm(FlaskForm):
