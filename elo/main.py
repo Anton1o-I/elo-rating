@@ -302,7 +302,7 @@ def get_rival_results():
             )
         )
         results = matches_schema.dump(match1).data
-        empty = {"wins": 0, "losses": 0}
+        empty = {"wins": 0, "losses": 0, "elo_diff": 0}
         keys = [p1, p2]
         p_dict = {key: empty.copy() for key in keys}
         for i in results:
@@ -312,6 +312,8 @@ def get_rival_results():
             elif i["p1_score"] < i["p2_score"]:
                 p_dict[i["player2"]]["wins"] += 1
                 p_dict[i["player1"]]["losses"] += 1
+            p_dict[i["player1"]]["elo_diff"] += i["p1_elo_diff"]
+            p_dict[i["player2"]]["elo_diff"] += i["p2_elo_diff"]
         return render_template(
             "rival-history.html", form=form, matches=results, summary=p_dict
         )
