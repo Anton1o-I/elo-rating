@@ -21,12 +21,14 @@
             <th scope="col"> Name </th>
             <th scope="col"> Wins </th>
             <th scope="col"> Losses </th>
+            <th scope="col"> Elo Diff</th>
         </tr>
     </thead>
     {% for key, value in summary.items() %}
     <th scope="row"> {{ key }} </th>
     <td> {{ value.wins }} </td>
-    <td> {{value.losses }} </td>
+    <td> {{ value.losses }} </td>
+    <td> {{ value.elo_diff }}</td>
     </tr>
     {% endfor %}
 </table>
@@ -38,18 +40,22 @@
         <tr>
             <th scope="col">ID</th>
             <th scope="col">Player1</th>
-            <th scope="col">Player1 Score</th>
             <th scope="col">Player2</th>
+            <th scope="col">Player1 Score</th>
             <th scope="col">Player2 Score</th>
+            <th scope="col">Player1 Elo Diff</th>
+            <th scope="col">Player2 Elo Diff</th>
         </tr>
     </thead>
     <tbody>
         {% for match in matches %}
         <th scope="row"> {{ match.id }} </th>
         <td> {{ match.player1 }} </td>
-        <td> {{match.p1_score }} </td>
         <td> {{ match.player2 }} </td>
+        <td> {{match.p1_score }} </td>
         <td> {{match.p2_score }} </td>
+        <td> {{match.p1_elo_diff }} </td>
+        <td> {{match.p2_elo_diff }} </td>
         </tr>
         {% endfor %}
     </tbody>
