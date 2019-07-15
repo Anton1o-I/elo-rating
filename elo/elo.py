@@ -20,7 +20,7 @@ def elo_adjust(outcomes: json, current) -> List[dict]:
     # differing game lengths to be factored into rankings
     mov = round(
         (abs((int(outcomes["p1_score"]) - int(outcomes["p2_score"]))) * 51)
-        / (int(outcomes["p1_score"]) + int(outcomes["p2_score"]))
+        / max([int(outcomes["p1_score"]), int(outcomes["p2_score"])])
     )
     mov1 = (mov ** 0.8) / (7.5 + 0.006 * elo_diff_1)
     mov2 = (mov ** 0.8) / (7.5 + 0.006 * elo_diff_2)

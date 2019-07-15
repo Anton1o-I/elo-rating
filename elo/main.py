@@ -176,9 +176,11 @@ def get_record(name):
 # p1_score needs to match score for the person entering the game result
 @app.route("/add-match", methods=["GET", "POST"])
 def add_result():
-    all_p = Player.query.all()
+    all_p = Player.query.order_by(Player.name.asc()).all()
     names = names_schema.dump(all_p)
-    form = ResultForm(names.data)
+    n_list = list(names.data)
+    n_list.insert(0, {"name": " "})
+    form = ResultForm(n_list)
     if form.validate_on_submit():
         if request.form["username"] == request.form["p2_name"]:
             return redirect("/add-match")
@@ -226,7 +228,6 @@ def confirm_result():
                 }
                 new_ratings = elo_adjust(match, ratings)
                 for p in new_ratings:
-                    print(p)
                     player = Player.query.filter_by(name=p["name"]).first_or_404()
                     player.rating = p["rating"]
                     if p["win"] == 1:
