@@ -197,7 +197,7 @@ def add_result():
             db.session.commit()
             return redirect("/add-match")
         else:
-            return jsonify("Authentication error", status_code=401)
+            return jsonify(data="Incorrect Password", status_code=401)
     return render_template("add-result.html", title="Add Match Result", form=form)
 
 
